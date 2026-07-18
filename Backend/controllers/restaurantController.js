@@ -34,7 +34,7 @@ exports.getRestaurant = catchAsync(async(req,res,next)=>{
 //update
 
 exports.createRestaurant = catchAsync(async (req, res, next) => {
-  console.log("Create Restaurant API called");
+
   console.log(req.body);;
   const restaurant = await Restaurant.create(req.body);
   res.status(201).json({

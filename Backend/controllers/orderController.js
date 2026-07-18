@@ -12,13 +12,15 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // Create a new order   =>  /api/v1/order/new
 exports.newOrder = catchAsyncErrors(async (req, res, next) => {
+
+
   // console.log("id", req.body);
   const { session_id } = req.body;
 
   const session = await stripe.checkout.sessions.retrieve(session_id, {
     expand: ["customer"],
   });
-  console.log(session);
+ 
   const cart = await Cart.findOne({ user: req.user._id })
     .populate({
       path: "items.foodItem",
@@ -28,55 +30,60 @@ exports.newOrder = catchAsyncErrors(async (req, res, next) => {
       path: "restaurant",
       select: "name",
     });
-  console.log(cart);
+ 
+  
+let deliveryInfo = {
+  address: session.customer_details.address.line1,
+  city: session.customer_details.address.city,
+  phoneNo: session.customer_details.phone,
+  postalCode: session.customer_details.address.postal_code,
+  country: session.customer_details.address.country,
+};
 
-  let deliveryInfo = {
-    address:
-      session.shipping_details.address.line1 +
-      " " +
-      session.shipping_details.address.line1,
-    city: session.shipping_details.address.city,
-    phoneNo: session.customer_details.phone,
-    postalCode: session.shipping_details.address.postal_code,
-    country: session.shipping_details.address.country,
-  };
-  let orderItems = cart.items.map((item) => ({
-    name: item.foodItem.name,
-    quantity: item.quantity,
-    image: item.foodItem.images[0].url,
-    price: item.foodItem.price,
-    fooditem: item.foodItem._id,
-  }));
+let orderItems = cart.items.map((item) => ({
+  name: item.foodItem.name,
+  quantity: item.quantity,
+  image: item.foodItem.images[0].url,
+  price: item.foodItem.price,
+  fooditem: item.foodItem._id,
+}));
 
-  let paymentInfo = {
-    id: session.payment_intent,
-    status: session.payment_status,
-  };
+let paymentInfo = {
+  id: session.payment_intent,
+  status: session.payment_status,
+};
 
 
-console.log("Creating order for user:", req.user._id);
 
-const order = await Order.create({
-  orderItems,
-  deliveryInfo,
-  paymentInfo,
-  deliveryCharge: +session.shipping_cost.amount_subtotal / 100,
-  itemsPrice: +session.amount_subtotal / 100,
-  finalTotal: +session.amount_total / 100,
-  user: req.user._id,
-  restaurant: cart.restaurant._id,
-  paidAt: Date.now(),
-});
+let order;
 
-console.log("ORDER CREATED =", order);
-  console.log("Order created:" , order);
-
-  await Cart.findOneAndDelete({ user: req.user._id });
-
-  res.status(200).json({
-    success: true,
-    order,
+try {
+  order = await Order.create({
+    orderItems,
+    deliveryInfo,
+    paymentInfo,
+    deliveryCharge: +session.shipping_cost.amount_subtotal / 100,
+    itemsPrice: +session.amount_subtotal / 100,
+    finalTotal: +session.amount_total / 100,
+    user: req.user._id,
+    restaurant: cart.restaurant._id,
+    paidAt: Date.now(),
   });
+
+ 
+
+} catch (err) {
+  console.error("ORDER CREATE ERROR:");
+  console.error(err);
+  throw err;
+}
+
+await Cart.findOneAndDelete({ user: req.user._id });
+
+res.status(200).json({
+  success: true,
+  order,
+});
 });
 
 // Get single order   =>   /api/v1/orders/:id
@@ -104,8 +111,6 @@ exports.myOrders = catchAsyncErrors(async (req, res, next) => {
     .populate("user", "name email")
     .populate("restaurant");
 
-  console.log("User ID:", req.user._id);
-  console.log("Orders Found:", orders);
 
   res.status(200).json({
     success: true,

@@ -280,29 +280,24 @@ const orderSchema = mongoose.Schema({
 // 5️⃣ Save order
 // 6️⃣ Return response
 
-orderSchema.pre("save", async function (next) {
-  try {
-    for (const orderItem of this.orderItems) {
-      const foodItem = await mongoose
-        .model("FoodItem")
-        .findById(orderItem.fooditem);
-      if (!foodItem) {
-        throw new Error("Food item not found.");
-      }
+orderSchema.pre("save", async function () {
+  for (const orderItem of this.orderItems) {
+    const foodItem = await mongoose
+      .model("FoodItem")
+      .findById(orderItem.fooditem);
 
-      if (foodItem.stock < orderItem.quantity) {
-        throw new Error(
-          `Insufficient stock for '${orderItem.name}' in this order.`
-        );
-      }
-
-      foodItem.stock -= orderItem.quantity;
-      await foodItem.save();
+    if (!foodItem) {
+      throw new Error("Food item not found.");
     }
 
-    next();
-  } catch (error) {
-    next(error);
+    if (foodItem.stock < orderItem.quantity) {
+      throw new Error(
+        `Insufficient stock for '${orderItem.name}' in this order.`
+      );
+    }
+
+    foodItem.stock -= orderItem.quantity;
+    await foodItem.save();
   }
 });
 module.exports = mongoose.model("Order", orderSchema);

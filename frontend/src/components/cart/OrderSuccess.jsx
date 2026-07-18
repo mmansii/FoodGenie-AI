@@ -21,7 +21,7 @@ const OrderSuccess = () => {
 
     hasCalled.current = true;
 
-    console.log("Calling createOrder with:", session_id);
+   
     dispatch(createOrder(session_id));
   }, [dispatch, session_id]);
 
