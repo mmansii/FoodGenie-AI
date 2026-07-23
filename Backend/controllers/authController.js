@@ -288,9 +288,11 @@ exports.resetPassword = catchAsyncErrors(async (req, res, next) => {
 exports.logout = catchAsyncErrors(async (req, res, next) => {
 
   res.cookie("jwt", null, {
-    expires: new Date(Date.now()),
-    httpOnly: true,
-  });
+  expires: new Date(Date.now()),
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
 
   res.status(200).json({
     success: true,
